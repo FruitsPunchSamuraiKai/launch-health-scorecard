@@ -22,19 +22,21 @@ This project asks:
 
 - **Markets:** Japan and Korea
 - **Platform:** Netflix only
-- **Format:** Scripted series only (v1)
-- **Timeframe:** 2024–2025 releases
+- **Format:** Live-action scripted series only
+- **Timeframe:** 2024–2025 releases (verified official Netflix release dates)
 - **Observation:** First 6 weeks after Top 10 entry (t0–t+5)
 - **Sample:** 14 titles (7 Japan, 7 Korea)
 
 ### Inclusion criteria
+- Netflix-released live-action scripted series
 - Primary market is Japan or Korea
-- Scripted Netflix series
+- Released 2024-01-01 through 2025-12-31
+- Verifiable official release date
 - Observable in Netflix weekly Top 10
-- At least 2 weeks of post-launch data
 
 ### Exclusions
-Films, reality/unscripted, insufficient observation window, ambiguous origin.
+Anime (covered in Project B), films, reality/unscripted, seasons with
+official release dates outside 2024-2025, ambiguous market origin.
 
 ## 3. Data Sources
 

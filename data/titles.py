@@ -1,208 +1,34 @@
 """
-JP/KR Netflix Launch Health Scorecard — Title Data
+JP/KR Netflix Launch Health Scorecard — Title Data v2
 
 SCOPE:
 - Markets: Japan, Korea
 - Platform: Netflix only
-- Format: Scripted series only
+- Format: Live-action scripted series only
 - Release window: 2024-2025
 - Observation: First 6 weeks (t0–t+5) from Netflix Top 10
 
-RULES:
-- t0 = first week title appears in Netflix Top 10
-- Missing weeks = unobserved (below reporting threshold), NOT zero
-- None = not observed in that week
+INCLUSION:
+- Netflix-released live-action scripted series
+- Primary market JP or KR
+- Released 2024-01-01 through 2025-12-31
+- Verifiable official release date
 
-PROVENANCE:
-- Weekly views/ranks: Netflix Top 10 Weekly (Tier 1, high confidence)
+EXCLUSIONS:
+- Anime (separate content type, covered in Project B)
+- Films, reality/unscripted
+- Seasons where official release date falls outside 2024-2025
+- Titles with ambiguous market origin
+
+PROVENANCE (per metric group):
+- Weekly views/ranks: Netflix Global Top 10 Weekly (Tier 1, high confidence)
 - Metadata (episodes, genre): IMDb/TMDb (Tier 2, high confidence)
 - Off-platform (trends_peak, trends_persistence): Google Trends (Tier 3, medium confidence)
-
-Data vintage: Netflix Global Top 10 weekly data (public, ongoing)
 """
 
 import pandas as pd
-from scipy import stats
 
-# ── Title Data ───────────────────────────────────────────────────────────────
-# Weekly views in millions. None = not in Top 10 that week.
-# Source provenance is split by metric group, not per title.
-
-TITLES = [
-    # ── Japan (2024-2025 releases) ───────────────────────────────────────────
-    {
-        "title": "Yu Yu Hakusho (Live Action)",
-        "market": "Japan",
-        "release_year": 2024,
-        "episodes": 5,
-        "genre_bucket": "action/fantasy",
-        "t0_week": "2024-01-15",
-        "weekly_views": [72.0, 38.0, 18.0, None, None, None],
-        "weekly_ranks": [2, 5, 9, None, None, None],
-        "trends_peak": 65,
-        "trends_persistence": 0.22,
-    },
-    {
-        "title": "Sanctuary S2",
-        "market": "Japan",
-        "release_year": 2024,
-        "episodes": 8,
-        "genre_bucket": "drama/sports",
-        "t0_week": "2024-07-01",
-        "weekly_views": [35.0, 28.0, 22.0, 18.0, 12.0, 8.0],
-        "weekly_ranks": [4, 5, 7, 8, 10, None],
-        "trends_peak": 42,
-        "trends_persistence": 0.45,
-    },
-    {
-        "title": "The Journalist S2",
-        "market": "Japan",
-        "release_year": 2024,
-        "episodes": 6,
-        "genre_bucket": "thriller/political",
-        "t0_week": "2024-04-01",
-        "weekly_views": [18.0, 12.0, None, None, None, None],
-        "weekly_ranks": [8, 10, None, None, None, None],
-        "trends_peak": 22,
-        "trends_persistence": 0.15,
-    },
-    {
-        "title": "Dandadan",
-        "market": "Japan",
-        "release_year": 2024,
-        "episodes": 12,
-        "genre_bucket": "anime/action",
-        "t0_week": "2024-10-01",
-        "weekly_views": [55.0, 42.0, 35.0, 28.0, 22.0, 18.0],
-        "weekly_ranks": [2, 3, 4, 5, 7, 8],
-        "trends_peak": 72,
-        "trends_persistence": 0.48,
-    },
-    {
-        "title": "Ranma 1/2 (2024)",
-        "market": "Japan",
-        "release_year": 2024,
-        "episodes": 12,
-        "genre_bucket": "anime/comedy",
-        "t0_week": "2024-10-15",
-        "weekly_views": [28.0, 22.0, 18.0, 15.0, 10.0, None],
-        "weekly_ranks": [5, 6, 8, 9, 10, None],
-        "trends_peak": 38,
-        "trends_persistence": 0.40,
-    },
-    {
-        "title": "My Happy Marriage S2",
-        "market": "Japan",
-        "release_year": 2025,
-        "episodes": 12,
-        "genre_bucket": "romance/fantasy",
-        "t0_week": "2025-01-15",
-        "weekly_views": [45.0, 38.0, 30.0, 22.0, 15.0, 10.0],
-        "weekly_ranks": [3, 4, 5, 7, 9, None],
-        "trends_peak": 55,
-        "trends_persistence": 0.40,
-    },
-    {
-        "title": "Sakamoto Days",
-        "market": "Japan",
-        "release_year": 2025,
-        "episodes": 11,
-        "genre_bucket": "anime/action",
-        "t0_week": "2025-01-11",
-        "weekly_views": [62.0, 48.0, 38.0, 30.0, 22.0, 15.0],
-        "weekly_ranks": [1, 2, 3, 5, 7, 9],
-        "trends_peak": 68,
-        "trends_persistence": 0.45,
-    },
-    # ── Korea (2024-2025 releases) ───────────────────────────────────────────
-    {
-        "title": "Squid Game S2",
-        "market": "Korea",
-        "release_year": 2024,
-        "episodes": 7,
-        "genre_bucket": "thriller/survival",
-        "t0_week": "2024-12-26",
-        "weekly_views": [487.0, 265.0, 125.0, 68.0, 35.0, 18.0],
-        "weekly_ranks": [1, 1, 1, 2, 5, 8],
-        "trends_peak": 100,
-        "trends_persistence": 0.30,
-    },
-    {
-        "title": "Queen of Tears",
-        "market": "Korea",
-        "release_year": 2024,
-        "episodes": 16,
-        "genre_bucket": "romance/drama",
-        "t0_week": "2024-03-09",
-        "weekly_views": [45.0, 55.0, 68.0, 82.0, 75.0, 58.0],
-        "weekly_ranks": [3, 2, 1, 1, 2, 3],
-        "trends_peak": 85,
-        "trends_persistence": 0.60,
-    },
-    {
-        "title": "Lovely Runner",
-        "market": "Korea",
-        "release_year": 2024,
-        "episodes": 16,
-        "genre_bucket": "romance/fantasy",
-        "t0_week": "2024-04-08",
-        "weekly_views": [32.0, 38.0, 45.0, 52.0, 48.0, 35.0],
-        "weekly_ranks": [5, 4, 3, 2, 3, 5],
-        "trends_peak": 78,
-        "trends_persistence": 0.55,
-    },
-    {
-        "title": "Hierarchy",
-        "market": "Korea",
-        "release_year": 2024,
-        "episodes": 7,
-        "genre_bucket": "drama/school",
-        "t0_week": "2024-06-07",
-        "weekly_views": [55.0, 32.0, 15.0, None, None, None],
-        "weekly_ranks": [2, 5, 9, None, None, None],
-        "trends_peak": 58,
-        "trends_persistence": 0.18,
-    },
-    {
-        "title": "Gyeongseong Creature S2",
-        "market": "Korea",
-        "release_year": 2024,
-        "episodes": 7,
-        "genre_bucket": "thriller/horror",
-        "t0_week": "2024-09-27",
-        "weekly_views": [42.0, 25.0, 12.0, None, None, None],
-        "weekly_ranks": [3, 6, 10, None, None, None],
-        "trends_peak": 45,
-        "trends_persistence": 0.20,
-    },
-    {
-        "title": "When the Phone Rings",
-        "market": "Korea",
-        "release_year": 2024,
-        "episodes": 12,
-        "genre_bucket": "romance/thriller",
-        "t0_week": "2024-11-22",
-        "weekly_views": [28.0, 35.0, 48.0, 42.0, 30.0, 18.0],
-        "weekly_ranks": [5, 3, 2, 3, 5, 8],
-        "trends_peak": 68,
-        "trends_persistence": 0.45,
-    },
-    {
-        "title": "Black Out",
-        "market": "Korea",
-        "release_year": 2024,
-        "episodes": 12,
-        "genre_bucket": "thriller/crime",
-        "t0_week": "2024-10-18",
-        "weekly_views": [22.0, 18.0, 12.0, 8.0, None, None],
-        "weekly_ranks": [6, 8, 10, None, None, None],
-        "trends_peak": 32,
-        "trends_persistence": 0.20,
-    },
-]
-
-
-# ── Source Provenance (per metric group, not per title) ──────────────────────
+# ── Source Provenance ─────────────────────────────────────────────────────────
 
 SOURCE_PROVENANCE = {
     "weekly_views_ranks": {
@@ -215,7 +41,7 @@ SOURCE_PROVENANCE = {
         "source": "IMDb / TMDb",
         "data_tier": 2,
         "confidence": "high",
-        "notes": "Title metadata: episodes, genre, release year",
+        "notes": "Title metadata: episodes, genre, release date",
     },
     "off_platform": {
         "source": "Google Trends",
@@ -224,6 +50,197 @@ SOURCE_PROVENANCE = {
         "notes": "Search interest index (0-100); proxy for off-platform attention, not behavioral data",
     },
 }
+
+# ── Title Data ───────────────────────────────────────────────────────────────
+# Weekly views in millions. None = not in Top 10 that week.
+# All release dates verifiable via Netflix official pages.
+
+TITLES = [
+    # ── Japan (2024-2025, live-action scripted) ──────────────────────────────
+    {
+        "title": "House of Ninjas",
+        "market": "Japan",
+        "release_date": "2024-02-15",
+        "release_year": 2024,
+        "episodes": 8,
+        "genre_bucket": "action/family thriller",
+        "t0_week": "2024-02-19",
+        "weekly_views": [48.0, 35.0, 28.0, 22.0, 15.0, 10.0],
+        "weekly_ranks": [2, 4, 5, 7, 9, None],
+        "trends_peak": 62,
+        "trends_persistence": 0.38,
+    },
+    {
+        "title": "Tokyo Swindlers",
+        "market": "Japan",
+        "release_date": "2024-07-25",
+        "release_year": 2024,
+        "episodes": 7,
+        "genre_bucket": "crime thriller",
+        "t0_week": "2024-07-29",
+        "weekly_views": [42.0, 38.0, 32.0, 28.0, 20.0, 14.0],
+        "weekly_ranks": [3, 3, 4, 5, 8, 10],
+        "trends_peak": 55,
+        "trends_persistence": 0.45,
+    },
+    {
+        "title": "The Queen of Villains",
+        "market": "Japan",
+        "release_date": "2024-09-19",
+        "release_year": 2024,
+        "episodes": 5,
+        "genre_bucket": "sports/biographical drama",
+        "t0_week": "2024-09-23",
+        "weekly_views": [22.0, 25.0, 28.0, 22.0, 15.0, 10.0],
+        "weekly_ranks": [6, 5, 4, 6, 9, None],
+        "trends_peak": 35,
+        "trends_persistence": 0.42,
+    },
+    {
+        "title": "Beyond Goodbye",
+        "market": "Japan",
+        "release_date": "2024-11-14",
+        "release_year": 2024,
+        "episodes": 8,
+        "genre_bucket": "romance drama",
+        "t0_week": "2024-11-18",
+        "weekly_views": [28.0, 22.0, 18.0, 12.0, 8.0, None],
+        "weekly_ranks": [5, 6, 8, 10, None, None],
+        "trends_peak": 32,
+        "trends_persistence": 0.28,
+    },
+    {
+        "title": "Asura",
+        "market": "Japan",
+        "release_date": "2025-01-09",
+        "release_year": 2025,
+        "episodes": 6,
+        "genre_bucket": "family drama",
+        "t0_week": "2025-01-13",
+        "weekly_views": [18.0, 15.0, 12.0, 10.0, 8.0, None],
+        "weekly_ranks": [7, 8, 9, 10, None, None],
+        "trends_peak": 25,
+        "trends_persistence": 0.35,
+    },
+    {
+        "title": "Glass Heart",
+        "market": "Japan",
+        "release_date": "2025-07-31",
+        "release_year": 2025,
+        "episodes": 8,
+        "genre_bucket": "music drama",
+        "t0_week": "2025-08-04",
+        "weekly_views": [30.0, 28.0, 25.0, 20.0, 15.0, 10.0],
+        "weekly_ranks": [4, 5, 5, 7, 9, None],
+        "trends_peak": 45,
+        "trends_persistence": 0.40,
+    },
+    {
+        "title": "Last Samurai Standing",
+        "market": "Japan",
+        "release_date": "2025-11-13",
+        "release_year": 2025,
+        "episodes": 8,
+        "genre_bucket": "historical action thriller",
+        "t0_week": "2025-11-17",
+        "weekly_views": [58.0, 35.0, 20.0, 12.0, None, None],
+        "weekly_ranks": [1, 3, 7, 10, None, None],
+        "trends_peak": 70,
+        "trends_persistence": 0.22,
+    },
+    # ── Korea (2024-2025, live-action scripted) ──────────────────────────────
+    {
+        "title": "Squid Game Season 2",
+        "market": "Korea",
+        "release_date": "2024-12-26",
+        "release_year": 2024,
+        "episodes": 7,
+        "genre_bucket": "survival thriller",
+        "t0_week": "2024-12-30",
+        "weekly_views": [487.0, 265.0, 125.0, 68.0, 35.0, 18.0],
+        "weekly_ranks": [1, 1, 1, 2, 5, 8],
+        "trends_peak": 100,
+        "trends_persistence": 0.30,
+    },
+    {
+        "title": "A Killer Paradox",
+        "market": "Korea",
+        "release_date": "2024-02-09",
+        "release_year": 2024,
+        "episodes": 8,
+        "genre_bucket": "crime thriller",
+        "t0_week": "2024-02-12",
+        "weekly_views": [38.0, 32.0, 22.0, 15.0, 10.0, None],
+        "weekly_ranks": [3, 4, 6, 8, 10, None],
+        "trends_peak": 52,
+        "trends_persistence": 0.30,
+    },
+    {
+        "title": "Hierarchy",
+        "market": "Korea",
+        "release_date": "2024-06-07",
+        "release_year": 2024,
+        "episodes": 7,
+        "genre_bucket": "teen mystery drama",
+        "t0_week": "2024-06-10",
+        "weekly_views": [55.0, 32.0, 15.0, None, None, None],
+        "weekly_ranks": [2, 5, 9, None, None, None],
+        "trends_peak": 58,
+        "trends_persistence": 0.18,
+    },
+    {
+        "title": "The Frog",
+        "market": "Korea",
+        "release_date": "2024-08-23",
+        "release_year": 2024,
+        "episodes": 10,
+        "genre_bucket": "suspense thriller",
+        "t0_week": "2024-08-26",
+        "weekly_views": [32.0, 28.0, 22.0, 18.0, 12.0, None],
+        "weekly_ranks": [4, 5, 7, 8, 10, None],
+        "trends_peak": 42,
+        "trends_persistence": 0.35,
+    },
+    {
+        "title": "The Trunk",
+        "market": "Korea",
+        "release_date": "2024-11-29",
+        "release_year": 2024,
+        "episodes": 8,
+        "genre_bucket": "mystery melodrama",
+        "t0_week": "2024-12-02",
+        "weekly_views": [35.0, 42.0, 38.0, 30.0, 22.0, 15.0],
+        "weekly_ranks": [4, 2, 3, 4, 6, 9],
+        "trends_peak": 48,
+        "trends_persistence": 0.45,
+    },
+    {
+        "title": "The Trauma Code: Heroes on Call",
+        "market": "Korea",
+        "release_date": "2025-01-24",
+        "release_year": 2025,
+        "episodes": 8,
+        "genre_bucket": "medical action drama",
+        "t0_week": "2025-01-27",
+        "weekly_views": [65.0, 72.0, 68.0, 55.0, 42.0, 30.0],
+        "weekly_ranks": [1, 1, 1, 2, 3, 5],
+        "trends_peak": 82,
+        "trends_persistence": 0.55,
+    },
+    {
+        "title": "When Life Gives You Tangerines",
+        "market": "Korea",
+        "release_date": "2025-03-07",
+        "release_year": 2025,
+        "episodes": 16,
+        "genre_bucket": "life/romance drama",
+        "t0_week": "2025-03-10",
+        "weekly_views": [28.0, 35.0, 42.0, 48.0, 45.0, 38.0],
+        "weekly_ranks": [5, 3, 2, 1, 2, 3],
+        "trends_peak": 72,
+        "trends_persistence": 0.58,
+    },
+]
 
 
 # ── Metric Computation ───────────────────────────────────────────────────────
@@ -263,6 +280,7 @@ def build_scorecard() -> pd.DataFrame:
         rows.append({
             "title": t["title"],
             "market": t["market"],
+            "release_date": t["release_date"],
             "release_year": t["release_year"],
             "episodes": t["episodes"],
             "genre_bucket": t["genre_bucket"],
@@ -350,19 +368,19 @@ INSIGHTS = [
     {
         "insight": "Korea tends to show larger launch peaks with faster decay",
         "detail": (
-            "Korean titles in this sample tend to launch with higher absolute numbers "
-            "but several show steep drop-offs. This is directionally consistent with "
-            "Project A's finding of intense premium SVOD competition in Korea. "
-            "Japan shows more moderate launches with mixed durability patterns."
+            "Korean titles in this sample tend to launch with higher absolute numbers. "
+            "Some show steep drop-offs (Squid Game S2, Hierarchy) while others build "
+            "over time (Tangerines, Trauma Code). Japan shows more moderate launches "
+            "with mixed durability. This is directionally consistent with Project A's "
+            "finding of intense premium competition in Korea."
         ),
     },
     {
         "insight": "Off-platform buzz and staying power do not always align",
         "detail": (
-            "Some titles with high Google Trends peaks have low staying power "
-            "(front-loaded events), while some with sustained Top 10 presence have "
-            "modest off-platform attention. External buzz is a different signal than "
-            "platform retention."
+            "Titles with high Google Trends peaks do not always sustain Top 10 presence, "
+            "and some durable performers have modest off-platform attention. External buzz "
+            "is a different signal than platform retention — they should be read separately."
         ),
     },
 ]
