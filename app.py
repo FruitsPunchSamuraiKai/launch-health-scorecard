@@ -167,10 +167,24 @@ with tab2:
         )
         st.plotly_chart(fig_traj, use_container_width=True)
 
-    # Source table
-    st.subheader("Data Sources")
-    src_cols = ["title", "market", "source", "source_date", "data_tier", "confidence"]
-    st.dataframe(df_display[src_cols], use_container_width=True, hide_index=True)
+    # Source provenance (per metric group)
+    st.subheader("Data Provenance")
+    from data.titles import SOURCE_PROVENANCE
+    prov_rows = []
+    for group, info in SOURCE_PROVENANCE.items():
+        prov_rows.append({
+            "Metric Group": group.replace("_", " ").title(),
+            "Source": info["source"],
+            "Tier": info["data_tier"],
+            "Confidence": info["confidence"],
+            "Notes": info["notes"],
+        })
+    st.dataframe(pd.DataFrame(prov_rows), use_container_width=True, hide_index=True)
+
+    st.caption(
+        "Source provenance is assigned per metric group, not per title. "
+        "Weekly views/ranks are Tier 1 (official Netflix). Off-platform metrics are Tier 3 (proxy)."
+    )
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 # TAB 3: JP vs KR COMPARISON
@@ -243,11 +257,12 @@ with tab3:
     with col_kr:
         st.markdown("**Korea**")
         st.markdown("""
-- Launches tend to be larger and more concentrated
-- Faster decay from peak is common
-- More titles fall into Front-Loaded or Durable Hit archetypes
-- Consistent with Project A's finding: Korea's intense premium
-  SVOD competition drives bigger, more concentrated launch events
+- Launches tend to be larger in absolute scale
+- Faster decay from peak appears more common
+- Several titles show steep front-loading patterns
+- Some titles (Queen of Tears, Lovely Runner) build over time — slow-burn is not absent
+- Directionally consistent with Project A: intense premium competition
+  may drive bigger launch events but also faster attention turnover
 """)
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
