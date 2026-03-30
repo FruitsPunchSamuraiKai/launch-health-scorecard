@@ -331,7 +331,8 @@ with st.sidebar:
     st.markdown(
         "**JP/KR Launch Health Scorecard**\n\n"
         "Public-data diagnostics for early signal vs. staying power.\n\n"
-        "14 Netflix scripted series across Japan and Korea, 2024-2025."
+        "14 Netflix live-action scripted series across Japan and Korea, 2024-2025.\n\n"
+        "Anime excluded (covered in Project B)."
     )
     st.markdown("---")
     st.markdown("### Data")

@@ -40,14 +40,14 @@ official release dates outside 2024-2025, ambiguous market origin.
 
 ## 3. Data Sources
 
-| Source | What It Provides | Tier |
-|---|---|---|
-| Netflix Top 10 Weekly | Weekly views, ranks, weeks observed | 1 (Reported) |
-| Netflix Engagement Report | Longer-window cross-check | 1 (Reported) |
-| Google Trends | Off-platform search attention | 3 (Proxy) |
-| IMDb / TMDb | Metadata: format, episodes, genre | 2 (Estimate) |
+| Metric Group | Source | Tier | Confidence |
+|---|---|---|---|
+| Weekly views & ranks | Netflix Global Top 10 Weekly | 1 (Reported) | High |
+| Metadata (episodes, genre, release date) | IMDb / TMDb | 2 (Estimate) | High |
+| Off-platform attention (trends_peak, trends_persistence) | Google Trends | 3 (Proxy) | Medium |
 
-Every field tagged with source, source_date, data_tier, confidence.
+Provenance is tracked per metric group, not per field. Weekly views/ranks
+are Tier 1 official data; off-platform metrics are Tier 3 proxies.
 
 ## 4. Approach
 
